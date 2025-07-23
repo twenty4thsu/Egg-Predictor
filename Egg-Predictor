@@ -1,67 +1,84 @@
--- Get the local player and PlayerGui
-local player = game:GetService("Players").LocalPlayer
+local player = game.Players.LocalPlayer
 local gui = player:WaitForChild("PlayerGui")
 
--- Remove existing GUI if any
-local existing = gui:FindFirstChild("VisualPetPredictor")
-if existing then existing:Destroy() end
+-- Clean up
+local old = gui:FindFirstChild("VisualPetPredictor")
+if old then old:Destroy() end
 
--- Create GUI
-local screenGui = Instance.new("ScreenGui")
+-- UI
+local screenGui = Instance.new("ScreenGui", gui)
 screenGui.Name = "VisualPetPredictor"
 screenGui.ResetOnSpawn = false
-screenGui.Parent = gui
 
--- Frame
 local frame = Instance.new("Frame", screenGui)
-frame.Size = UDim2.new(0, 300, 0, 200)
-frame.Position = UDim2.new(0.05, 0, 0.5, -100)
-frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-frame.BorderSizePixel = 0
-local uiCorner = Instance.new("UICorner", frame)
-uiCorner.CornerRadius = UDim.new(0, 8)
+frame.Size = UDim2.new(0, 320, 0, 240)
+frame.Position = UDim2.new(0.05, 0, 0.4, -120)
+frame.BackgroundColor3 = Color3.fromRGB(35,35,35)
+Instance.new("UICorner", frame)
 
--- Title
 local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 40)
-title.Text = "🌱 Grow A Garden - Pet Predictor"
+title.Size = UDim2.new(1,0,0,40)
 title.BackgroundTransparency = 1
-title.TextColor3 = Color3.new(1, 1, 1)
+title.Text = "🌱 Grow a Garden Pet Predictor"
+title.TextColor3 = Color3.new(1,1,1)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 18
 
--- Predict button
 local button = Instance.new("TextButton", frame)
-button.Size = UDim2.new(0.8, 0, 0, 40)
-button.Position = UDim2.new(0.1, 0, 0.35, 0)
-button.Text = "🔮 Predict Pet"
-button.TextColor3 = Color3.new(1, 1, 1)
-button.BackgroundColor3 = Color3.fromRGB(45, 170, 45)
+button.Size = UDim2.new(0.7,0,0,40)
+button.Position = UDim2.new(0.15,0,0.25,0)
+button.Text = "🔍 Scan Egg in Garden"
+button.TextColor3 = Color3.new(1,1,1)
+button.BackgroundColor3 = Color3.fromRGB(45,170,45)
 button.Font = Enum.Font.GothamBold
-button.TextSize = 18
+button.TextSize = 16
 Instance.new("UICorner", button)
 
--- Result label
 local result = Instance.new("TextLabel", frame)
-result.Size = UDim2.new(0.9, 0, 0.35, 0)
-result.Position = UDim2.new(0.05, 0, 0.62, 0)
+result.Size = UDim2.new(0.9,0,0.5,0)
+result.Position = UDim2.new(0.05,0,0.5,0)
 result.BackgroundTransparency = 1
-result.TextColor3 = Color3.new(1, 1, 1)
+result.TextColor3 = Color3.new(1,1,1)
 result.Font = Enum.Font.Gotham
-result.TextSize = 16
+result.TextSize = 14
 result.TextWrapped = true
-result.Text = "Click Predict to reveal your pet!"
+result.Text = "Click the button to predict from your egg."
 
--- Pet data (fake visual data only)
-local fakePets = {
-    {name = "Carrot Buddy", rarity = "Common"},
-    {name = "Golden Onion", rarity = "Rare"},
-    {name = "Sunflower Fox", rarity = "Epic"},
-    {name = "Watermelon Dragon", rarity = "Legendary"},
+-- Egg → Pets table
+local eggToPets = {
+    ["Common Egg"] = {"Golden Lab","Dog","Bunny"},
+    ["Mythical Egg"] = {"Grey Mouse","Brown Mouse","Squirrel","Red Giant Ant","Red Fox"},
+    ["Bug Egg"] = {"Snail","Giant Ant","Caterpillar","Praying Mantis","Dragonfly"},
+    ["Bee Egg"] = {"Bee","Honey Bee","Bear Bee","Petal Bee","Queen Bee"},
+    ["Anti Bee Egg"] = {"Wasp","Tarantula Hawk","Moth","Butterfly","Disco Bee"},
+    ["Common Summer Egg"] = {"Starfish","Seagull","Crab"},
+    ["Rare Summer Egg"] = {"Flamingo","Toucan","Sea Turtle","Orangutan","Seal"},
+    ["Paradise Egg"] = {"Ostrich","Peacock","Capybara","Scarlet Macaw","Mini Octopus"},
+    ["Legendary Egg"] = {"Cow","Silver Monkey","Sea Otter","Turtle","Polar Bear"},
+    ["Night Egg"] = {"Hedgehog","Mole","Frog","Echo Frog","Night Owl","Raccoon"},
+    ["Dinosaur Egg"] = {"Triceratops","Pterodactyl","Raptor","Brontosaurus","T-Rex","Spinosaurus","Ankylosaurus","Pachycephalosaurus","Dilophosaurus"},
+    ["Primal Egg"] = {"Spinosaurus","Ankylosaurus","Dilophosaurus"} -- recent update :contentReference[oaicite:1]{index=1}
 }
 
--- Click event
+-- Scan logic
+local function scanEgg()
+    local garden = workspace:FindFirstChild(player.Name .. "'s Garden") or workspace:FindFirstChild("Garden_" .. player.Name)
+    if not garden then return nil end
+
+    for _, obj in pairs(garden:GetDescendants()) do
+        if eggToPets[obj.Name] then
+            return obj.Name
+        end
+    end
+    return nil
+end
+
 button.MouseButton1Click:Connect(function()
-    local pet = fakePets[math.random(1, #fakePets)]
-    result.Text = "🎉 You got: " .. pet.name .. "\n⭐ Rarity: " .. pet.rarity
+    local egg = scanEgg()
+    if egg and eggToPets[egg] then
+        local pets = eggToPets[egg]
+        result.Text = ("🥚 Egg: %s\n🎁 Possible pets:\n• %s"):format(egg, table.concat(pets, "\n• "))
+    else
+        result.Text = "⚠️ No supported egg found in your garden!"
+    end
 end)
