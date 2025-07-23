@@ -1,39 +1,46 @@
-local player = game.Players.LocalPlayer
+-- Services & Player
+local Players = game:GetService("Players")
+local Debris = game:GetService("Debris")
+local player = Players.LocalPlayer
 local gui = player:WaitForChild("PlayerGui")
 
--- Remove old UI
+-- Remove existing UI
 local old = gui:FindFirstChild("VisualPetPredictor")
 if old then old:Destroy() end
 
--- GUI setup
+-- Screen GUI
 local screenGui = Instance.new("ScreenGui", gui)
 screenGui.Name = "VisualPetPredictor"
 screenGui.ResetOnSpawn = false
 
+-- Frame
 local frame = Instance.new("Frame", screenGui)
 frame.Size = UDim2.new(0, 320, 0, 240)
 frame.Position = UDim2.new(0.05, 0, 0.4, -120)
 frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 Instance.new("UICorner", frame)
 
+-- Title
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1, 0, 0, 40)
 title.BackgroundTransparency = 1
-title.Text = "🌱 Grow a Garden Pet Predictor"
+title.Text = "🌱 Grow a Garden — Pet Predictor"
 title.TextColor3 = Color3.new(1, 1, 1)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 18
 
+-- Predict Button
 local button = Instance.new("TextButton", frame)
 button.Size = UDim2.new(0.7, 0, 0, 40)
 button.Position = UDim2.new(0.15, 0, 0.25, 0)
-button.Text = "🔍 Scan Garden Egg"
+button.Text = "🔮 Predict Egg Pet"
 button.TextColor3 = Color3.new(1, 1, 1)
 button.BackgroundColor3 = Color3.fromRGB(45, 170, 45)
 button.Font = Enum.Font.GothamBold
 button.TextSize = 16
 Instance.new("UICorner", button)
 
+-- Result Text
 local result = Instance.new("TextLabel", frame)
 result.Size = UDim2.new(0.9, 0, 0.5, 0)
 result.Position = UDim2.new(0.05, 0, 0.5, 0)
@@ -42,34 +49,74 @@ result.TextColor3 = Color3.new(1, 1, 1)
 result.Font = Enum.Font.Gotham
 result.TextSize = 14
 result.TextWrapped = true
-result.Text = "Click to scan egg in your garden..."
+result.Text = "Click to predict the pet inside your egg!"
 
--- Egg-to-pet mapping (you can add more)
+-- Accurate Egg-to-Pets Table (based on real egg names)
 local eggToPets = {
-    ["common"] = {"Golden Lab", "Dog", "Bunny"},
-    ["mythical"] = {"Grey Mouse", "Brown Mouse", "Red Giant Ant", "Squirrel"},
-    ["bug"] = {"Snail", "Caterpillar", "Praying Mantis", "Dragonfly"},
-    ["bee"] = {"Bee", "Honey Bee", "Bear Bee", "Petal Bee", "Queen Bee"},
-    ["anti bee"] = {"Wasp", "Tarantula Hawk", "Butterfly", "Disco Bee"},
-    ["summer"] = {"Starfish", "Seagull", "Crab", "Flamingo", "Toucan"},
-    ["paradise"] = {"Ostrich", "Peacock", "Capybara", "Scarlet Macaw", "Mini Octopus"},
-    ["legendary"] = {"Cow", "Silver Monkey", "Sea Otter", "Turtle", "Polar Bear"},
-    ["night"] = {"Hedgehog", "Frog", "Echo Frog", "Mole", "Night Owl", "Raccoon"},
-    ["dino"] = {"Triceratops", "T-Rex", "Raptor", "Brontosaurus"},
-    ["primal"] = {"Spinosaurus", "Dilophosaurus", "Ankylosaurus"},
+    ["Common Egg"] = {"Dog", "Golden Lab", "Bunny"},
+    ["Mythical Egg"] = {"Grey Mouse", "Brown Mouse", "Red Giant Ant", "Squirrel"},
+    ["Bug Egg"] = {"Snail", "Caterpillar", "Dragonfly", "Praying Mantis"},
+    ["Bee Egg"] = {"Bee", "Honey Bee", "Queen Bee", "Bear Bee", "Petal Bee"},
+    ["Anti Bee Egg"] = {"Wasp", "Butterfly", "Disco Bee", "Tarantula Hawk"},
+    ["Summer Egg"] = {"Starfish", "Seagull", "Crab", "Flamingo", "Toucan"},
+    ["Paradise Egg"] = {"Ostrich", "Peacock", "Capybara", "Scarlet Macaw", "Mini Octopus"},
+    ["Legendary Egg"] = {"Cow", "Silver Monkey", "Sea Otter", "Turtle", "Polar Bear"},
+    ["Night Egg"] = {"Hedgehog", "Frog", "Echo Frog", "Mole", "Night Owl", "Raccoon"},
+    ["Dino Egg"] = {"Triceratops", "T-Rex", "Raptor", "Brontosaurus"},
+    ["Primal Egg"] = {"Spinosaurus", "Dilophosaurus", "Ankylosaurus"},
 }
 
--- Scan logic (now uses partial name match)
-local function scanEgg()
-    local garden = workspace:FindFirstChild(player.Name .. "'s Garden") or workspace:FindFirstChild("Garden_" .. player.Name)
+-- Find the real egg model in the player's garden
+local function findGardenEgg()
+    local garden = workspace:FindFirstChild(player.Name .. "'s Garden")
+        or workspace:FindFirstChild("Garden_" .. player.Name)
     if not garden then return nil end
 
-    for _, obj in pairs(garden:GetDescendants()) do
+    for _, obj in ipairs(garden:GetDescendants()) do
         if obj:IsA("Model") or obj:IsA("Part") or obj:IsA("MeshPart") then
-            local lowerName = obj.Name:lower()
-            for keyword, pets in pairs(eggToPets) do
-                if lowerName:find(keyword) then
-                    return keyword, pets
+            local realName = obj.Name
+            for eggName, pets in pairs(eggToPets) do
+                if realName == eggName then
+                    return obj, eggName, pets
                 end
             end
         end
+    end
+    return nil
+end
+
+-- Show Billboard label above egg with predicted pet name
+local function displayAboveEgg(eggObj, petName)
+    local adornee = eggObj:IsA("Model") and eggObj:FindFirstChildWhichIsA("BasePart") or eggObj
+    if not adornee then return end
+
+    local board = Instance.new("BillboardGui")
+    board.Adornee = adornee
+    board.Size = UDim2.new(0, 150, 0, 50)
+    board.AlwaysOnTop = true
+    board.Name = "PetPrediction"
+    board.Parent = eggObj
+
+    local label = Instance.new("TextLabel", board)
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 18
+    label.TextStrokeTransparency = 0.5
+    label.Text = "🎉 " .. petName
+
+    Debris:AddItem(board, 10) -- remove after 10 seconds
+end
+
+-- Predict on click
+button.MouseButton1Click:Connect(function()
+    local eggObj, eggName, pets = findGardenEgg()
+    if eggObj and pets then
+        local pet = pets[math.random(1, #pets)]
+        result.Text = "🥚 " .. eggName .. "\n🎁 Possible Pets:\n• " .. table.concat(pets, "\n• ")
+        displayAboveEgg(eggObj, pet)
+    else
+        result.Text = "⚠️ No supported egg found in your garden!"
+    end
+end)
