@@ -1,0 +1,112 @@
+local player = game.Players.LocalPlayer
+local rs = game:GetService("ReplicatedStorage")
+local eggFolder = rs:WaitForChild("Eggs")
+
+-- Destroy previous UI if it exists
+local oldGui = player.PlayerGui:FindFirstChild("PetPredictorGUI")
+if oldGui then oldGui:Destroy() end
+
+local gui = Instance.new("ScreenGui", player.PlayerGui)
+gui.Name = "PetPredictorGUI"
+gui.ResetOnSpawn = false
+
+-- Main Frame
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 350, 0, 240)
+frame.Position = UDim2.new(0.05, 0, 0.3, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+Instance.new("UICorner", frame)
+
+-- Title
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Text = "🥚 Egg Pet Predictor (Visual)"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+
+-- Dropdown (Egg Name)
+local eggBox = Instance.new("TextBox", frame)
+eggBox.Size = UDim2.new(0.9, 0, 0, 35)
+eggBox.Position = UDim2.new(0.05, 0, 0, 40)
+eggBox.PlaceholderText = "Enter egg name (e.g., StarterEgg)"
+eggBox.Text = ""
+eggBox.TextSize = 16
+eggBox.TextColor3 = Color3.new(1, 1, 1)
+eggBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Instance.new("UICorner", eggBox)
+
+-- Predict Button
+local button = Instance.new("TextButton", frame)
+button.Size = UDim2.new(0.9, 0, 0, 40)
+button.Position = UDim2.new(0.05, 0, 0, 90)
+button.Text = "🎲 Predict Pet"
+button.TextColor3 = Color3.new(1, 1, 1)
+button.TextSize = 18
+button.Font = Enum.Font.GothamBold
+button.BackgroundColor3 = Color3.fromRGB(30, 180, 30)
+Instance.new("UICorner", button)
+
+-- Result Label
+local result = Instance.new("TextLabel", frame)
+result.Size = UDim2.new(0.9, 0, 0, 60)
+result.Position = UDim2.new(0.05, 0, 0, 140)
+result.Text = ""
+result.TextColor3 = Color3.new(1, 1, 1)
+result.TextSize = 16
+result.Font = Enum.Font.Gotham
+result.BackgroundTransparency = 1
+result.TextWrapped = true
+
+-- Prediction Logic
+button.MouseButton1Click:Connect(function()
+	local eggName = eggBox.Text
+	local egg = eggFolder:FindFirstChild(eggName)
+
+	if not egg then
+		result.Text = "❌ Egg not found: " .. eggName
+		return
+	end
+
+	local pets = egg:GetChildren()
+	if #pets == 0 then
+		result.Text = "❌ No pets in egg!"
+		return
+	end
+
+	local pet = pets[math.random(1, #pets)]:Clone()
+	if not pet.PrimaryPart then
+		pet.PrimaryPart = pet:FindFirstChildWhichIsA("BasePart")
+	end
+
+	local rarity = pet:GetAttribute("Rarity") or "Unknown"
+
+	-- Visual spawn
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if not (root and pet.PrimaryPart) then
+		result.Text = "❌ Failed to place pet visually"
+		return
+	end
+
+	local visualFolder = workspace:FindFirstChild("PredictedPet") or Instance.new("Folder", workspace)
+	visualFolder:ClearAllChildren()
+	visualFolder.Name = "PredictedPet"
+
+	pet.Parent = visualFolder
+	pet:SetPrimaryPartCFrame(root.CFrame * CFrame.new(5, 3, 0))
+
+	-- Floating effect
+	local ts = game:GetService("TweenService")
+	local tween = ts:Create(
+		pet.PrimaryPart,
+		TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{Position = pet.PrimaryPart.Position + Vector3.new(0, 2, 0)}
+	)
+	tween:Play()
+
+	result.Text = "✅ Predicted Pet: " .. pet.Name .. "\n✨ Rarity: " .. rarity
+end)
