@@ -1,11 +1,11 @@
 local player = game.Players.LocalPlayer
 local gui = player:WaitForChild("PlayerGui")
 
--- Clean up
+-- Remove old UI
 local old = gui:FindFirstChild("VisualPetPredictor")
 if old then old:Destroy() end
 
--- UI
+-- GUI setup
 local screenGui = Instance.new("ScreenGui", gui)
 screenGui.Name = "VisualPetPredictor"
 screenGui.ResetOnSpawn = false
@@ -13,72 +13,63 @@ screenGui.ResetOnSpawn = false
 local frame = Instance.new("Frame", screenGui)
 frame.Size = UDim2.new(0, 320, 0, 240)
 frame.Position = UDim2.new(0.05, 0, 0.4, -120)
-frame.BackgroundColor3 = Color3.fromRGB(35,35,35)
+frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 Instance.new("UICorner", frame)
 
 local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1,0,0,40)
+title.Size = UDim2.new(1, 0, 0, 40)
 title.BackgroundTransparency = 1
-title.Text = "🌱 Grow a Garden Pet Predictor"
-title.TextColor3 = Color3.new(1,1,1)
+title.Text = "🌱 Grow a Garden Pet Predictor"
+title.TextColor3 = Color3.new(1, 1, 1)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 18
 
 local button = Instance.new("TextButton", frame)
-button.Size = UDim2.new(0.7,0,0,40)
-button.Position = UDim2.new(0.15,0,0.25,0)
-button.Text = "🔍 Scan Egg in Garden"
-button.TextColor3 = Color3.new(1,1,1)
-button.BackgroundColor3 = Color3.fromRGB(45,170,45)
+button.Size = UDim2.new(0.7, 0, 0, 40)
+button.Position = UDim2.new(0.15, 0, 0.25, 0)
+button.Text = "🔍 Scan Garden Egg"
+button.TextColor3 = Color3.new(1, 1, 1)
+button.BackgroundColor3 = Color3.fromRGB(45, 170, 45)
 button.Font = Enum.Font.GothamBold
 button.TextSize = 16
 Instance.new("UICorner", button)
 
 local result = Instance.new("TextLabel", frame)
-result.Size = UDim2.new(0.9,0,0.5,0)
-result.Position = UDim2.new(0.05,0,0.5,0)
+result.Size = UDim2.new(0.9, 0, 0.5, 0)
+result.Position = UDim2.new(0.05, 0, 0.5, 0)
 result.BackgroundTransparency = 1
-result.TextColor3 = Color3.new(1,1,1)
+result.TextColor3 = Color3.new(1, 1, 1)
 result.Font = Enum.Font.Gotham
 result.TextSize = 14
 result.TextWrapped = true
-result.Text = "Click the button to predict from your egg."
+result.Text = "Click to scan egg in your garden..."
 
--- Egg → Pets table
+-- Egg-to-pet mapping (you can add more)
 local eggToPets = {
-    ["Common Egg"] = {"Golden Lab","Dog","Bunny"},
-    ["Mythical Egg"] = {"Grey Mouse","Brown Mouse","Squirrel","Red Giant Ant","Red Fox"},
-    ["Bug Egg"] = {"Snail","Giant Ant","Caterpillar","Praying Mantis","Dragonfly"},
-    ["Bee Egg"] = {"Bee","Honey Bee","Bear Bee","Petal Bee","Queen Bee"},
-    ["Anti Bee Egg"] = {"Wasp","Tarantula Hawk","Moth","Butterfly","Disco Bee"},
-    ["Common Summer Egg"] = {"Starfish","Seagull","Crab"},
-    ["Rare Summer Egg"] = {"Flamingo","Toucan","Sea Turtle","Orangutan","Seal"},
-    ["Paradise Egg"] = {"Ostrich","Peacock","Capybara","Scarlet Macaw","Mini Octopus"},
-    ["Legendary Egg"] = {"Cow","Silver Monkey","Sea Otter","Turtle","Polar Bear"},
-    ["Night Egg"] = {"Hedgehog","Mole","Frog","Echo Frog","Night Owl","Raccoon"},
-    ["Dinosaur Egg"] = {"Triceratops","Pterodactyl","Raptor","Brontosaurus","T-Rex","Spinosaurus","Ankylosaurus","Pachycephalosaurus","Dilophosaurus"},
-    ["Primal Egg"] = {"Spinosaurus","Ankylosaurus","Dilophosaurus"} -- recent update :contentReference[oaicite:1]{index=1}
+    ["common"] = {"Golden Lab", "Dog", "Bunny"},
+    ["mythical"] = {"Grey Mouse", "Brown Mouse", "Red Giant Ant", "Squirrel"},
+    ["bug"] = {"Snail", "Caterpillar", "Praying Mantis", "Dragonfly"},
+    ["bee"] = {"Bee", "Honey Bee", "Bear Bee", "Petal Bee", "Queen Bee"},
+    ["anti bee"] = {"Wasp", "Tarantula Hawk", "Butterfly", "Disco Bee"},
+    ["summer"] = {"Starfish", "Seagull", "Crab", "Flamingo", "Toucan"},
+    ["paradise"] = {"Ostrich", "Peacock", "Capybara", "Scarlet Macaw", "Mini Octopus"},
+    ["legendary"] = {"Cow", "Silver Monkey", "Sea Otter", "Turtle", "Polar Bear"},
+    ["night"] = {"Hedgehog", "Frog", "Echo Frog", "Mole", "Night Owl", "Raccoon"},
+    ["dino"] = {"Triceratops", "T-Rex", "Raptor", "Brontosaurus"},
+    ["primal"] = {"Spinosaurus", "Dilophosaurus", "Ankylosaurus"},
 }
 
--- Scan logic
+-- Scan logic (now uses partial name match)
 local function scanEgg()
     local garden = workspace:FindFirstChild(player.Name .. "'s Garden") or workspace:FindFirstChild("Garden_" .. player.Name)
     if not garden then return nil end
 
     for _, obj in pairs(garden:GetDescendants()) do
-        if eggToPets[obj.Name] then
-            return obj.Name
+        if obj:IsA("Model") or obj:IsA("Part") or obj:IsA("MeshPart") then
+            local lowerName = obj.Name:lower()
+            for keyword, pets in pairs(eggToPets) do
+                if lowerName:find(keyword) then
+                    return keyword, pets
+                end
+            end
         end
-    end
-    return nil
-end
-
-button.MouseButton1Click:Connect(function()
-    local egg = scanEgg()
-    if egg and eggToPets[egg] then
-        local pets = eggToPets[egg]
-        result.Text = ("🥚 Egg: %s\n🎁 Possible pets:\n• %s"):format(egg, table.concat(pets, "\n• "))
-    else
-        result.Text = "⚠️ No supported egg found in your garden!"
-    end
-end)
